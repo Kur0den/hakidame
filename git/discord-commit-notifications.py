@@ -1,6 +1,6 @@
 import requests
 import sys
-
+import datetime
 url = "WEBHOOK_URL"
 
 hash = sys.argv[1]
@@ -30,7 +30,7 @@ for line in files.split('\n'):
 
 
 data = {
-    "content": "<@&1270581745615372461> あたらしいcommitだよ！",
+    "content": "<@&1270581745615372461> あたらしいCommitだよ！",
     "embeds": [
     {
         "id": 66608588,
@@ -42,8 +42,8 @@ data = {
                 "inline": False
                 }
             ],
-        "title": "New Commit",
-        "timestamp": "2024-08-16T15:00:00.000Z",
+        "title": commit_message,
+        "timestamp": datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
         "footer": {
             "text": author
         },
