@@ -2,7 +2,7 @@ import requests
 import sys
 from datetime import datetime
 
-url = "https://canary.discord.com/api/webhooks/1279016777430601800/hkzbbo9z782ch8IP0CyIIohppoF5GMWh0VKbTx2H-u8V1PwORm_wliQOnRKRyqVpw5_y"
+url = "WEBHOOK_URL"
 
 log = sys.argv[1]
 author = sys.argv[2]
@@ -24,7 +24,7 @@ data = {
         "id": 66608588,
         "description": f"```\n{log}\n```",
         "title": "New Deploy",
-        "timestamp": datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
+        "timestamp": datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
         "footer": {
             "text": "実行者: " + author
         },
