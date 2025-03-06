@@ -1,6 +1,7 @@
-import boto3
-import os
 from dotenv import load_dotenv
+import boto3
+
+import os
 import subprocess
 import logging
 import datetime
@@ -39,6 +40,12 @@ def upload_to_s3(file_path, object_name):
         logging.error(f"Error uploading file: {e}")
         raise e
 
+def ensure_directory_exists(file_path):
+    directory = os.path.dirname(file_path)
+    # 親ディレクトリが存在しない場合は作成（exist_ok=Trueで既存の場合はスキップ）
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+
 def dump_db(BACKUP_DIR):
     # 環境変数の取得
     DB_HOST = os.getenv('MARIADB_HOST')
@@ -53,19 +60,23 @@ def dump_db(BACKUP_DIR):
         raise ValueError("Environment variables not set")
 
     # バックアップファイルのパス
-    backup_file = os.path.join(BACKUP_DIR, "mariadb_backup",  f"{DB_NAME}.sql")
+    backup_file = os.path.join(BACKUP_DIR,  f"{DB_NAME}.sql")
 
     # mysqldumpコマンドの実行
     try:
-        subprocess.run([
+        result = subprocess.run([
             'mysqldump',
             f'--host={DB_HOST}',
             f'--port={DB_PORT}',
             f'--user={DB_USER}',
             f'--password={DB_PASS}',
             DB_NAME,
-            f'--result-file={backup_file}'
-        ], check=True)
+        ], check=True, capture_output=True, text=True)
+
+        ensure_directory_exists(backup_file)
+        with open(backup_file, "w", encoding="utf-8") as f:
+            f.write(result.stdout)
+
         logging.info(f"Database backup saved to {backup_file}")
         return backup_file
     except subprocess.CalledProcessError as e:
@@ -75,12 +86,14 @@ def dump_db(BACKUP_DIR):
 def main():
     # バックアップファイルの保存先
     # $XDG_CACHE_HOMEが設定されていない場合は$HOME/.cacheに保存
-    BACKUP_DIR = os.getenv('XDG_CACHE_HOME', os.getenv('HOME', "~") + '/.cache')
+    BACKUP_DIR = os.path.join(os.getenv('XDG_CACHE_HOME', os.path.join(os.path.expanduser('~'), '.cache')), "mariadb_backup")
     backup_file = dump_db(BACKUP_DIR)
 
     date = datetime.datetime.now().strftime("%Y-%m-%d")
     upload_to_s3(backup_file, f"mariadb_backup/{date}.sql")
 
+
+    logging.info("Backup and upload process completed successfully.")
 
 if __name__ == "__main__":
     main()
