@@ -8,7 +8,8 @@ import datetime
 # .envファイルの読み込み
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
+# ログの設定
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def upload_to_s3(file_path, object_name):
 
@@ -51,8 +52,6 @@ def dump_db(BACKUP_DIR):
         logging.error("Environment variables not set")
         raise ValueError("Environment variables not set")
 
-
-
     # バックアップファイルのパス
     backup_file = os.path.join(BACKUP_DIR, "mariadb_backup",  f"{DB_NAME}.sql")
 
@@ -79,6 +78,9 @@ def main():
     BACKUP_DIR = os.getenv('XDG_CACHE_HOME', os.getenv('HOME', "~") + '/.cache')
     backup_file = dump_db(BACKUP_DIR)
 
-
     date = datetime.datetime.now().strftime("%Y-%m-%d")
     upload_to_s3(backup_file, f"mariadb_backup/{date}.sql")
+
+
+if __name__ == "__main__":
+    main()
