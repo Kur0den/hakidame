@@ -1,0 +1,275 @@
+/// @ 0.19.0
+// @kur0den0010@chpk.kur0den.net
+// 人をだめにするソファ
+
+
+//---------------------------------------------------
+// MIT License
+// © 2023-2025 Kur0den0010
+// https://opensource.org/licenses/mit-license.php
+//---------------------------------------------------
+
+
+// メイン関数
+@main(name, isLogin){  // isLoginはログインしているかどうかを判断するための変数なので消さないで
+    // 処理とかはここに書く
+    // ------
+    
+    // 人を駄目にするソファ
+    let choices = ["人", "駄目", "ソファ"]
+    
+    // nameを種にすることによってユーザーごとに異なる乱数を出力することが可能
+    // シードが「ユーザーID+今日の日付」である乱数生成器をIDの場所を組み換えて3つ用意
+    let randSeed_a = Math:gen_rng(`{USER_ID}{Date:year()}{Date:month()}{Date:day()}`)
+    let randSeed_b = Math:gen_rng(`{Date:year()}{USER_ID}{Date:month()}{Date:day()}`)
+    let randSeed_c = Math:gen_rng(`{Date:year()}{Date:month()}{USER_ID}{Date:day()}`)
+
+
+    var result_a = choices[randSeed_a(0 (choices.len-1))]
+    var result_b = choices[randSeed_b(1 (choices.len-1))]
+    var result_c = choices[randSeed_c(1 (choices.len-1))]
+
+
+
+
+    // 結果のテキスト
+    let result = `{result_a}を{result_b}にする{result_c}`
+
+    // ------
+    // ここまで自由に処理できる場所
+
+    // 最終的にTLに投稿される文字列
+    // 投稿される文言を編集したい時はここをいじる
+    let postText = `<center>{result}</center>{Str:lf}{Str:lf}#人を駄目にするソファ{Str:lf}{THIS_URL}`
+
+    postProcessing(result, postText, isLogin)
+}
+
+
+// ここから下手に触ったら壊れるところ
+
+// メイン処理後の処理
+@postProcessing(result, postText, isLogin) {
+    var instanceDomain = ""
+
+    if isLogin == true { //ログインしている場合はそのままフォームを表示
+        Ui:render([
+            Ui:C:container({
+                align: 'center'
+                    children: [
+                        Ui:C:mfm({ text: `{result}` size: 2}) // Playの結果表示
+                        Ui:C:postForm({
+                            form: {text: postText} // 投稿フォームのデフォルト文字列
+                        })
+                   ]
+                })
+        ])
+    } else { // 未ログイン時はURL生成用のUIを表示
+        // 最終的に投稿される文言をURLエンコード
+        let encodedPostText = encodeURIComponent(postText)
+        Ui:render([
+            Ui:C:container({
+                align: 'center'
+                children: [
+                    Ui:C:container({
+                        align: 'center'
+                        borderWidth: 1 // 枠幅
+                        borderColor: '#6b8e23' // 枠の色
+                        padding: 1
+                        rounded: true
+                        children: [
+                            Ui:C:mfm({ text: `{result}` size: 2}) // Playの結果表示
+                        ]
+                    })
+                    Ui:C:folder({
+                        opened: true
+                        title: "共有"
+                        children: [
+                            Ui:C:container({
+                                align: 'center'
+                                children: [
+                                    Ui:C:container({
+                                        align: 'center'
+                                        children: [
+                                            Ui:C:mfm({ text: `[Misskey-Hub経由で共有する](https://misskey-hub.net/share?text={encodedPostText})`, size: 1.5}) // Misskey-Hub経由共有リンク
+                                        ]
+                                    })
+                                    Ui:C:container({
+                                        align: 'center'
+                                        children: [
+                                            Ui:C:mfm({ text: '指定したサーバーで投稿できるURLを生成できます' }) // 説明
+                                            Ui:C:mfm({
+                                                text: if Mk:load("inputInstance") != null {
+                                                    instanceDomain = Mk:load("inputInstance")
+                                                    `[投稿用リンク<small>({instanceDomain})</small>](<https://{instanceDomain}/share?text={encodedPostText}>)`
+                                                } else {
+                                                    ``
+                                                }
+                                                size: 1.5
+                                                } 'link') // 後でURLを表示するためのUI要素
+                                            Ui:C:textInput({
+                                                onInput: @(text){ instanceDomain = text } //入力時に変数に入力された文字列を代入
+                                                default:  if Mk:load("inputInstance") == null {
+                                                            ""
+                                                        } else {
+                                                            Mk:load("inputInstance")// 以前入力された名前をデフォルトにする
+                                                        }
+                                                label: '投稿したいサーバーのドメインを入力'
+                                                caption: '例）misskey.io, koliosky.com, chpk.kur0den.net'
+                                            })
+                                            Ui:C:button({
+                                                text: '投稿用URLを生成する' // URL生成ボタン
+                                                onClick: @(){ //ボタン押下時にURL更新を実行
+                                                    if instanceDomain == '' {
+                                                        if Mk:load("inputInstance") != null {
+                                                            instanceDomain =  Mk:load("inputInstance")
+                                                        }
+                                                    } else {
+                                                        Mk:save("inputInstance", instanceDomain) // 入力されたドメインを保存
+                                                    }
+                                                    if instanceDomain == '' {
+                                                        Ui:get('link').update({text: `インスタンスドメインを指定してください`}) // 日本語以外の記号(<>など)はURLエンコードする必要あり
+                                                    } else {
+                                                        Ui:get('link').update({text: `[投稿用リンク](<https://{instanceDomain}/share?text={encodedPostText}>)`}) // 日本語以外の記号(<>など)はURLエンコードする必要あり
+                                                    }
+                                                } // URLを生成・更新
+                                                primary: true
+                                                rounded: true
+                                            })
+                                        ]
+                                    })
+                                    Ui:C:container({
+                                        align: 'center'
+                                        children: [
+                                            Ui:C:mfm({ text: '以下のボタンを押すと、投稿用のフォームが表示されます'}) // 説明
+                                            Ui:C:button({
+                                                text: 'コピー用のフォームを表示する' // コピー用フォーム表示ボタン
+                                                onClick: @(){ //ボタン押下時にフォーム表示を実行
+                                                    Ui:get('copyButton').update({
+                                                        align: "center"
+                                                        children: [
+                                                            Ui:C:mfm({ text: `\`\`\`{Str:lf}{postText}{Str:lf}\`\`\``}) // 説明
+                                                        ]
+                                                    })
+                                                    } // 投稿フォーム表示
+                                                primary: false
+                                                rounded: true
+                                                })
+                                        ]
+                                    }, "copyButton")
+                                ]
+                            })
+                        ]
+                    })
+                ]
+            })
+        ])
+    }
+}
+
+// メイン表示前の処理
+@preProcessing() {
+    var name = ''
+    var isLogin = true
+
+    if USER_ID == null { //未ログイン状態(リモートからの実行とか)かどうかをIDがnullかどうかで判断
+        isLogin = false
+        Ui:render([         //ユーザー名送信用のフォームを表示
+            Ui:C:container({
+                align: 'center'
+                children: [
+                    Ui:C:textInput({
+                        onInput: @(text){
+                            name = text
+                        } //入力時に変数に入力された文字列を代入
+                        default: if Mk:load("inputName") == null {
+                                    ""
+                                } else {
+                                    Mk:load("inputName")// 以前入力された名前をデフォルトにする
+                                }
+                        label: 'ユーザー名を入力'
+                        caption: '結果のユーザー名表示と乱数生成に使用されます' // 名前を入力する理由を書いておく
+                    })
+                    Ui:C:buttons({
+                        buttons: [
+                            {
+                                text: 'スキップ' // 入力スキップ用
+                                onClick: @(){
+                                    if Mk:load("inputName") == null {
+                                        name = '名無し'
+                                    } else {
+                                        name = Mk:load("inputName")
+                                    }
+                                    main(name, isLogin)
+                                    } // nameをテンプレにしたうえでメインの処理を実行
+                                primary: false
+                                rounded: true
+                            }
+                            {
+                                text: '確定' // 入力確定用
+                                onClick: @(){
+                                    if name == '' { //未入力時はnameにテンプレか保存されている名前を代入してからメインを実行
+                                        if Mk:load("inputName") == null {
+                                            name = "名無し"
+                                        } else {
+                                            name = Mk:load("inputName")
+                                        }
+                                    }
+                                    Mk:save("inputName", name) // 入力された名前を保存
+                                    main(name, isLogin)
+                                }
+                                primary: true // 確定側をprimaryに
+                                rounded: true
+                            }
+                        ]
+                    })
+                ]
+            })
+        ])
+    } else {
+        name = USER_NAME  // ログイン時はユーザー名を引数に、isLoginがTrueのままメインを実行
+        main(name, isLogin)
+    }
+}
+
+// URLエンコード関数
+@encodeURIComponent(content) {
+    var utf8Arr = []
+    let noEncode = [34, 37, 45, 46, 48, 49, 50, 51, 52, 53,
+                    54, 55, 56, 57, 65, 66, 67, 68, 69, 70,
+                    71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+                    81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+                    92, 94, 95, 96, 97, 98, 99, 100, 101, 102,
+                    103, 104, 105, 106, 107, 108, 109, 110,
+                    111, 112, 113, 114, 115, 116, 117, 118,
+                    119, 120, 121, 122, 123, 124, 125, 126]
+    // 60 62
+
+
+    each let v, content.to_arr() {
+        utf8Arr.push(v.to_utf8_byte_arr())
+    }
+
+    var urlStr = ""
+    each let a, utf8Arr {
+        if a.len == 1 {
+            if noEncode.incl(a[0]) {
+                let nomalStr = Str:from_utf8_bytes(a)
+                urlStr = `{urlStr}{nomalStr}`
+                continue
+            }
+        }
+        each let v, a {
+            var hexCode = Num:to_hex(v)
+            if hexCode.len == 1 {
+                hexCode = `0{hexCode}`
+            }
+            urlStr = `{urlStr}%{hexCode}`
+        }
+    }
+    return urlStr
+}
+
+
+// preProcessingを実行
+preProcessing()
